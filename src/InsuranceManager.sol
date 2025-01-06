@@ -40,17 +40,11 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
     bytes32 private immutable i_donID;
 
     string private s_ClaimSourceCode;
+    string private s_CalculateClaimSourceCode;
+    bytes public s_lastResponse;
+    bytes public s_lastError;
 
     mapping(bytes32 requestId => Request) private s_requestIdToRequest;
-    // JavaScript source code
-    // Fetch character name from the Star Wars API.
-    // Documentation: https://swapi.info/people
-    // string source = "const characterId = args[0];" "const apiResponse = await Functions.makeHttpRequest({"
-    //     "url: `https://swapi.info/api/people/${characterId}/`" "});" "if (apiResponse.error) {"
-    //     "throw Error('Request failed');" "}" "const { data } = apiResponse;" "return Functions.encodeString(data.name);";
-
-    // State variable to store the returned character information
-    // string public character;
 
     /* Events */
     /* Modifiers */
@@ -82,19 +76,42 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
         return requestId;
     }
 
-    function sendClaimCalculationRequest(address user, uint256 claimAmount, string[] calldata args)
+    function _claimFullfillRequest(bytes memory response) internal pure returns (bool isClaimable) {
+        uint256 claim = (uint256(bytes32(response)));
+        if (claim == 1) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function sendCalculateClaimRequest(address user, uint256 claimAmount, string[] calldata args)
         external
         onlyOwner
         returns (bytes32 requestId)
-    {}
+    {
+        FunctionsRequest.Request memory req;
+        req.initializeRequestForInlineJavaScript(s_CalculateClaimSourceCode); // Initialize the request with JS code
+        if (args.length > 0) req.setArgs(args); // Set the arguments for the request
 
-    /**
-     * @notice Callback function for fulfilling a request
-     * @param requestId The ID of the request to fulfill
-     * @param response The HTTP response data
-     * @param err Any errors from the Functions request
-     */
-    function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {}
+        requestId = _sendRequest(req.encodeCBOR(), i_subscriptionId, i_gasLimit, i_donID);
+        s_requestIdToRequest[requestId] = Request(user, claimAmount, CheckClaimOrCalculateClaim.CalculateClaim);
+        return requestId;
+    }
+
+    function _calculateClaimFullfillRequest() internal {}
+
+    function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
+        if (s_requestIdToRequest[requestId].checkClaimOrCalculateClaim == CheckClaimOrCalculateClaim.CheckClaim) {
+            _claimFullfillRequest(response);
+        } else {
+            _calculateClaimFullfillRequest();
+        }
+        s_lastResponse = response;
+        s_lastError = err;
+    }
+
+    function _transferClaim() internal {}
 
     /* receive function (if exists) */
     /* fallback function (if exists) */
