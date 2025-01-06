@@ -62,6 +62,9 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
         s_ClaimSourceCode = claimSourceCode;
     }
 
+    /* receive function (if exists) */
+    /* fallback function (if exists) */
+    /* external */
     function sendClaimRequest(address user, uint256 claimAmount, string[] calldata args)
         external
         onlyOwner
@@ -74,15 +77,6 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
         requestId = _sendRequest(req.encodeCBOR(), i_subscriptionId, i_gasLimit, i_donID);
         s_requestIdToRequest[requestId] = Request(user, claimAmount, CheckClaimOrCalculateClaim.CheckClaim);
         return requestId;
-    }
-
-    function _claimFullfillRequest(bytes memory response) internal pure returns (bool isClaimable) {
-        uint256 claim = (uint256(bytes32(response)));
-        if (claim == 1) {
-            return true;
-        } else {
-            return false;
-        }
     }
 
     function sendCalculateClaimRequest(address user, uint256 claimAmount, string[] calldata args)
@@ -99,8 +93,9 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
         return requestId;
     }
 
-    function _calculateClaimFullfillRequest() internal {}
+    /* public */
 
+    /* internal */
     function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
         if (s_requestIdToRequest[requestId].checkClaimOrCalculateClaim == CheckClaimOrCalculateClaim.CheckClaim) {
             _claimFullfillRequest(response);
@@ -110,15 +105,56 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
         s_lastResponse = response;
         s_lastError = err;
     }
+    /* private */
+
+    /* internal & private view & pure functions */
+    function _claimFullfillRequest(bytes memory response) internal pure returns (bool isClaimable) {
+        uint256 claim = (uint256(bytes32(response)));
+        if (claim == 1) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function _calculateClaimFullfillRequest() internal {}
 
     function _transferClaim() internal {}
 
-    /* receive function (if exists) */
-    /* fallback function (if exists) */
-    /* external */
-    /* public */
-    /* internal */
-    /* private */
-    /* internal & private view & pure functions */
     /* external & public view & pure functions */
+    function getRouter() external view returns (address) {
+        return router;
+    }
+
+    function getSubscriptionId() external view returns (uint64) {
+        return i_subscriptionId;
+    }
+
+    function getGasLimit() external view returns (uint32) {
+        return i_gasLimit;
+    }
+
+    function getDonID() external view returns (bytes32) {
+        return i_donID;
+    }
+
+    function getClaimSourceCode() external view returns (string memory) {
+        return s_ClaimSourceCode;
+    }
+
+    function getCalculateClaimSourceCode() external view returns (string memory) {
+        return s_CalculateClaimSourceCode;
+    }
+
+    function getLastResponse() external view returns (bytes memory) {
+        return s_lastResponse;
+    }
+
+    function getLastError() external view returns (bytes memory) {
+        return s_lastError;
+    }
+
+    function getRequestDetails(bytes32 requestId) external view returns (Request memory) {
+        return s_requestIdToRequest[requestId];
+    }
 }
