@@ -51,15 +51,20 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
     /* Functions */
     /* constructor */
 
-    constructor(address _router, uint64 subscriptionId, uint32 gasLimit, bytes32 donID, string memory claimSourceCode)
-        FunctionsClient(_router)
-        ConfirmedOwner(msg.sender)
-    {
+    constructor(
+        address _router,
+        uint64 subscriptionId,
+        uint32 gasLimit,
+        bytes32 donID,
+        string memory claimSourceCode,
+        string memory calculateClaimSourceCode
+    ) FunctionsClient(_router) ConfirmedOwner(msg.sender) {
         router = _router;
         i_subscriptionId = subscriptionId;
         i_gasLimit = gasLimit;
         i_donID = donID;
         s_ClaimSourceCode = claimSourceCode;
+        s_CalculateClaimSourceCode = calculateClaimSourceCode;
     }
 
     /* receive function (if exists) */
