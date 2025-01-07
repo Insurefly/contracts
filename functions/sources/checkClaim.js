@@ -1,0 +1,59 @@
+const flightDataRequest = Functions.makeHttpRequest({
+    url: "https://gist.githubusercontent.com/PROWLERx15/ee98786a6ceb1620a2de52844024557c/raw",
+    method: 'GET',
+    headers: { accept: 'application/json' },
+});
+
+// Wait for the response
+const [response] = await Promise.all([flightDataRequest]);
+
+// Check if data exists in the response
+if (!response || !response.data) {
+    throw new Error("Flight data not available in the response.");
+}
+
+// Parse the arguments from the input
+const flightNumber = args[0];           // Flight Number
+const airlineName = args[1];            // Airline Name
+const departureAirportName = args[2];  // Departure Airport
+const departureDatetime = args[3];     // Departure DateTime
+const arrivalAirportName = args[4];  // Departure Airport
+const arrivalDatetime = args[5];     // Departure DateTime
+
+// Filter the flight data based on the parameters passed as args
+const filteredFlight = response.data.filter(flight => {
+    return (
+        flight.flightNumber === flightNumber &&
+        flight.airline === airlineName &&
+        flight.departureAirport === departureAirportName &&
+        flight.departureTime === departureDatetime &&
+        flight.arrivalAirport === arrivalAirportName &&
+        flight.arrivalTime === arrivalDatetime
+    );
+});
+
+// If no flight matches, throw an error
+if (filteredFlight.length === 0) {
+    throw new Error("No flights matching the provided parameters.");
+}
+
+// Check Claim Eligibility function
+function checkClaimEligibility(delay, status) {
+    // If delay is 180 minutes or more, or if the status is cancelled
+    if (delay >= 180 || status === "Cancelled") {
+        return true; // Eligible for claim
+    }
+    return false; // Not eligible for claim
+}
+
+// Process each filtered flight for claim eligibility
+const claimResults = filteredFlight.map(flight => {
+    const isClaimable = checkClaimEligibility(flight.delayMinutes, flight.status);
+    return {
+        isClaimable: isClaimable,
+        delayMinutes: flight.delayMinutes // returning delay in minutes (uint)
+    };
+});
+
+// Return only isClaimable and delayMinutes as JSON
+return Functions.encodeString(JSON.stringify(claimResults));

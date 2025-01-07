@@ -8,6 +8,8 @@
     "test": "test"
   },
   "scripts": {
+    "simulatecheckClaim": "node -r dotenv/config ./functions/simulators/checkClaimSimulator.js",
+    "simulatecalculateInsurance": "node -r dotenv/config ./functions/simulators/calculateInsuranceSimulator.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -23,6 +25,8 @@
   },
   "homepage": "https://github.com/Insurefly/contracts#readme",
   "dependencies": {
-    "@chainlink/functions-toolkit": "^0.3.2"
+    "@chainlink/functions-toolkit": "^0.3.2",
+    "buffer": "^6.0.3",
+    "dotenv": "^16.4.7"
   }
 }
