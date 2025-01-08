@@ -1,5 +1,9 @@
+if (!secrets.flightDataUrl) {
+    throw new Error("Flight Data URL is not set in secrets.");
+  }
+
 const flightDataRequest = Functions.makeHttpRequest({
-    url: "https://gist.githubusercontent.com/PROWLERx15/ee98786a6ceb1620a2de52844024557c/raw",
+    url: secrets.flightDataUrl,
     method: 'GET',
     headers: { accept: 'application/json' },
 });
@@ -15,10 +19,10 @@ if (!response || !response.data) {
 // Parse the arguments from the input
 const flightNumber = args[0];           // Flight Number
 const airlineName = args[1];            // Airline Name
-const departureAirportName = args[2];  // Departure Airport
-const departureDatetime = args[3];     // Departure DateTime
-const arrivalAirportName = args[4];  // Departure Airport
-const arrivalDatetime = args[5];     // Departure DateTime
+const departureAirportName = args[2];   // Departure Airport
+const departureDatetime = args[3];      // Departure DateTime
+const arrivalAirportName = args[4];     // Departure Airport
+const arrivalDatetime = args[5];        // Departure DateTime
 
 // Filter the flight data based on the parameters passed as args
 const filteredFlight = response.data.filter(flight => {

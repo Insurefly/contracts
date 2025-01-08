@@ -5,16 +5,16 @@ const { Location, ReturnType, CodeLanguage } = require("@chainlink/functions-too
 const requestConfig = {
     source: fs.readFileSync(__dirname + "/../sources/checkClaim.js").toString(),
     codeLocation: Location.Inline,
-    secrets: {},
+    secrets: {flightDataUrl: process.env.FLIGHT_DATA_URL ?? "",},
     secretsLocation: Location.DONHosted,
     // Here we pass params as arguments to filter the data
     args: [
-        "BA204",                                // Flight number (parameter 1)
-        "British Airways",                      // Airline name (parameter 2)
-        "Los Angeles International Airport",    // Departure airport name (parameter 3)
-        "2025-01-05T15:00:00",                  // Departure datetime (parameter 4)
-        "London Heathrow Airport",
-        "2025-01-06T07:30:00"
+        "AF456",                                        // Flight number (parameter 0)
+        "Air France",                                   // Airline name (parameter 1)
+        "Charles de Gaulle Airport",                    // Departure airport name (parameter 2)
+        "2025-01-05T19:00:00",                          // Departure datetime (parameter 3)
+        "Toronto Pearson International Airport",        // Arrival airport name (parameter 4)
+        "2025-01-05T22:30:00"                           // Arrival datetime (parameter 5)
     ],
     codeLanguage: CodeLanguage.JavaScript,
     expectedReturnType: ReturnType.string,
