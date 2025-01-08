@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-contract FlightInsurance {
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {FundsManager} from "src/FundsManger.sol";
+
+contract FlightInsurance is ReentrancyGuard {
     /* errors */
     error FlightInsurance__AmountShouldBeMoreThanZero();
     error FlightInsurance__InvalidInsuranceId();
+    error FlightInsurance__TransferFailed();
 
     /* interfaces, libraries, contract */
 
@@ -44,6 +48,7 @@ contract FlightInsurance {
 
     /* State variables */
     uint256 private _InsuranceCounter;
+    FundsManager private immutable i_FundsManager;
 
     mapping(uint256 _InsuranceCounter => Insurance) private s_Insurances;
 
@@ -69,8 +74,9 @@ contract FlightInsurance {
     /* Functions */
 
     /* constructor */
-    constructor() {
+    constructor(address fundsManagerAddress) {
         _InsuranceCounter = 0;
+        i_FundsManager = FundsManager(payable(fundsManagerAddress));
     }
     /* receive function (if exists) */
     /* fallback function (if exists) */
@@ -89,7 +95,7 @@ contract FlightInsurance {
         string memory _arrivalAirportCode,
         string memory _arrivalAirportName,
         string memory _arrivalDateAndTime
-    ) public MoreThanZero(_premiumAmount) {
+    ) public MoreThanZero(_premiumAmount) nonReentrant {
         uint256 _InsuranceId = _InsuranceCounter++;
 
         s_Insurances[_InsuranceCounter] = Insurance({
@@ -106,6 +112,11 @@ contract FlightInsurance {
             }),
             insuranceStatus: InsuranceStatus.Active
         });
+
+        (bool success,) = address(i_FundsManager).call{value: s_Insurances[_InsuranceCounter].premiumAmount}("");
+        if (!success) {
+            revert FlightInsurance__TransferFailed();
+        }
 
         emit InsuranceCreated(_user, s_Insurances[_InsuranceCounter]);
     }
