@@ -21,8 +21,8 @@ const flightNumber = args[0];           // Flight Number
 const airlineName = args[1];            // Airline Name
 const departureAirportName = args[2];   // Departure Airport
 const departureDatetime = args[3];      // Departure DateTime
-const arrivalAirportName = args[4];     // Departure Airport
-const arrivalDatetime = args[5];        // Departure DateTime
+const arrivalAirportName = args[4];     // Arrival Airport
+const arrivalDatetime = args[5];        // Arrival DateTime
 
 // Filter the flight data based on the parameters passed as args
 const filteredFlight = response.data.filter(flight => {

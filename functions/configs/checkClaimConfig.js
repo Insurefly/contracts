@@ -5,7 +5,7 @@ const { Location, ReturnType, CodeLanguage } = require("@chainlink/functions-too
 const requestConfig = {
     source: fs.readFileSync(__dirname + "/../sources/checkClaim.js").toString(),
     codeLocation: Location.Inline,
-    secrets: {flightDataUrl: process.env.FLIGHT_DATA_URL ?? "",},
+    secrets: {flightDataUrl: process.env.FLIGHT_DATA_URL ?? ""},
     secretsLocation: Location.DONHosted,
     // Here we pass params as arguments to filter the data
     args: [
