@@ -4,6 +4,8 @@ pragma solidity ^0.8.19;
 import {FunctionsClient} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
+import {FlightInsurance} from "src/FlightInsurance.sol";
+import {FundsManager} from "src/FundsManager.sol";
 
 /**
  * @title Insurance Manager
@@ -22,7 +24,7 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
 
     /* Type declarations */
 
-    enum CheckClaimOrCalculateClaim {
+    enum ClaimType {
         CheckClaim,
         CalculateClaim
     }
@@ -30,7 +32,7 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
     struct Request {
         address user;
         uint256 claimAmount;
-        CheckClaimOrCalculateClaim checkClaimOrCalculateClaim;
+        ClaimType checkClaimOrCalculateClaim;
     }
     /* State variables */
 
@@ -80,7 +82,7 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
         if (args.length > 0) req.setArgs(args); // Set the arguments for the request
 
         requestId = _sendRequest(req.encodeCBOR(), i_subscriptionId, i_gasLimit, i_donID);
-        s_requestIdToRequest[requestId] = Request(user, claimAmount, CheckClaimOrCalculateClaim.CheckClaim);
+        s_requestIdToRequest[requestId] = Request(user, claimAmount, ClaimType.CheckClaim);
         return requestId;
     }
 
@@ -94,7 +96,7 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
         if (args.length > 0) req.setArgs(args); // Set the arguments for the request
 
         requestId = _sendRequest(req.encodeCBOR(), i_subscriptionId, i_gasLimit, i_donID);
-        s_requestIdToRequest[requestId] = Request(user, claimAmount, CheckClaimOrCalculateClaim.CalculateClaim);
+        s_requestIdToRequest[requestId] = Request(user, claimAmount, ClaimType.CalculateClaim);
         return requestId;
     }
 
@@ -102,7 +104,7 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
 
     /* internal */
     function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
-        if (s_requestIdToRequest[requestId].checkClaimOrCalculateClaim == CheckClaimOrCalculateClaim.CheckClaim) {
+        if (s_requestIdToRequest[requestId].checkClaimOrCalculateClaim == ClaimType.CheckClaim) {
             _claimFullfillRequest(response);
         } else {
             _calculateClaimFullfillRequest();

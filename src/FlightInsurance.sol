@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {FundsManager} from "src/FundsManger.sol";
+import {FundsManager} from "src/FundsManager.sol";
 
 contract FlightInsurance is ReentrancyGuard {
     /* errors */
