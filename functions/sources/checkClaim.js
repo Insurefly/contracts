@@ -1,6 +1,6 @@
 if (!secrets.flightDataUrl) {
     throw new Error("Flight Data URL is not set in secrets.");
-  }
+}
 
 const flightDataRequest = Functions.makeHttpRequest({
     url: secrets.flightDataUrl,
@@ -41,23 +41,11 @@ if (filteredFlight.length === 0) {
     throw new Error("No flights matching the provided parameters.");
 }
 
-// Check Claim Eligibility function
-function checkClaimEligibility(delay, status) {
-    // If delay is 180 minutes or more, or if the status is cancelled
-    if (delay >= 180 || status === "Cancelled") {
-        return true; // Eligible for claim
-    }
-    return false; // Not eligible for claim
+// Extract delayMinutes from the first matching flight
+const delayMinutes = filteredFlight[0].delayMinutes;
+if (delayMinutes === undefined || delayMinutes === null || isNaN(delayMinutes) || delayMinutes < 0) {
+    throw new Error("Invalid delayMinutes value.");
 }
-
-// Process each filtered flight for claim eligibility
-const claimResults = filteredFlight.map(flight => {
-    const isClaimable = checkClaimEligibility(flight.delayMinutes, flight.status);
-    return {
-        isClaimable: isClaimable,
-        delayMinutes: flight.delayMinutes // returning delay in minutes (uint)
-    };
-});
-
-// Return only isClaimable and delayMinutes as JSON
-return Functions.encodeString(JSON.stringify(claimResults));
+console.log("Delay Minutes: ", delayMinutes);
+// Return the value as a Buffer of 32 bytes (uint256)
+return Functions.encodeUint256(delayMinutes);
