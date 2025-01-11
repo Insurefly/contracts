@@ -5,6 +5,13 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {FundsManager} from "src/FundsManager.sol";
 import {InsuranceManager} from "src/InsuranceManager.sol";
 
+/**
+ * @title Flight Insurance Contract
+ * @author Prowlerx15
+ * @notice This contract allows users to purchase flight insurance for their flights.
+ *         It includes functionalities like purchasing insurance, claiming insurance,
+ *         canceling insurance, and querying insurance details.
+ */
 contract FlightInsurance is ReentrancyGuard {
     /* errors */
     error FlightInsurance__AmountShouldBeMoreThanZero();
@@ -68,12 +75,6 @@ contract FlightInsurance is ReentrancyGuard {
     event InsuranceClaimed(uint256 indexed insuranceId, address indexed user);
 
     /* Modifiers */
-    modifier MoreThanZero(uint256 amount) {
-        if (amount <= 0) {
-            revert FlightInsurance__AmountShouldBeMoreThanZero();
-        }
-        _;
-    }
 
     modifier InsuranceExists(uint256 insuranceId) {
         if (s_Insurances[insuranceId].insuranceId == 0) {
@@ -97,11 +98,8 @@ contract FlightInsurance is ReentrancyGuard {
         i_FundsManager = FundsManager(payable(fundsManagerAddress));
         i_InsuranceManager = InsuranceManager(insuranceManagerAddress);
     }
-    /* receive function (if exists) */
-    /* fallback function (if exists) */
-    /* external */
-    /* public */
 
+    /* public */
     function createInsurance(
         address _user,
         uint256 _premiumAmount,
@@ -114,7 +112,7 @@ contract FlightInsurance is ReentrancyGuard {
         string memory _arrivalAirportCode,
         string memory _arrivalAirportName,
         string memory _arrivalDateAndTime
-    ) public MoreThanZero(_premiumAmount) nonReentrant {
+    ) public nonReentrant {
         uint256 _InsuranceId = s_InsuranceCounter++;
 
         s_Insurances[s_InsuranceCounter] = Insurance({
@@ -169,14 +167,6 @@ contract FlightInsurance is ReentrancyGuard {
         emit InsuranceClaimed(insuranceId, s_Insurances[insuranceId].user);
     }
 
-    function _UpdateInsuranceStatus(uint256 insuranceId, InsuranceStatus status)
-        internal
-        InsuranceExists(insuranceId)
-    {
-        s_Insurances[insuranceId].insuranceStatus = status;
-        emit InsuranceStatusUpdated(insuranceId, status);
-    }
-
     function cancelInsurance(uint256 insuranceId) public InsuranceExists(insuranceId) onlyInsuranceOwner(insuranceId) {
         if (s_Insurances[insuranceId].insuranceStatus != InsuranceStatus.Active) {
             revert FlightInsurance__InvalidStatus();
@@ -189,8 +179,14 @@ contract FlightInsurance is ReentrancyGuard {
     }
 
     /* internal */
-    /* private */
-    /* internal & private view & pure functions */
+    function _UpdateInsuranceStatus(uint256 insuranceId, InsuranceStatus status)
+        internal
+        InsuranceExists(insuranceId)
+    {
+        s_Insurances[insuranceId].insuranceStatus = status;
+        emit InsuranceStatusUpdated(insuranceId, status);
+    }
+
     /* external & public view & pure functions */
     function getInsurance(uint256 insuranceId) external view returns (Insurance memory) {
         return s_Insurances[insuranceId];
