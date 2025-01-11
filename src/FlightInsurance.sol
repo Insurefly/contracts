@@ -3,12 +3,15 @@ pragma solidity ^0.8.19;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {FundsManager} from "src/FundsManager.sol";
+import {InsuranceManager} from "src/InsuranceManager.sol";
 
 contract FlightInsurance is ReentrancyGuard {
     /* errors */
     error FlightInsurance__AmountShouldBeMoreThanZero();
     error FlightInsurance__InvalidInsuranceId();
     error FlightInsurance__TransferFailed();
+    error FlightInsurance__Unauthorized();
+    error FlightInsurance__InvalidStatus();
 
     /* interfaces, libraries, contract */
 
@@ -16,7 +19,8 @@ contract FlightInsurance is ReentrancyGuard {
     enum InsuranceStatus {
         Active,
         Cancelled,
-        Claimed
+        Claimed,
+        Expired
     }
 
     struct Airport {
@@ -44,17 +48,24 @@ contract FlightInsurance is ReentrancyGuard {
         uint256 premiumAmount;
         Flight ticket;
         InsuranceStatus insuranceStatus;
+        uint256 createdAt;
     }
 
     /* State variables */
-    uint256 private _InsuranceCounter;
+    uint256 private s_InsuranceCounter;
+
     FundsManager private immutable i_FundsManager;
+    InsuranceManager private immutable i_InsuranceManager;
+
+    uint256 private constant INSURANCE_VALIDITY_PERIOD = 30 days;
 
     mapping(uint256 _InsuranceCounter => Insurance) private s_Insurances;
+    mapping(address => uint256[]) private s_UserInsurances;
 
     /* Events */
     event InsuranceCreated(address indexed user, Insurance indexed insurance);
     event InsuranceStatusUpdated(uint256 insuranceId, InsuranceStatus status);
+    event InsuranceClaimed(uint256 indexed insuranceId, address indexed user);
 
     /* Modifiers */
     modifier MoreThanZero(uint256 amount) {
@@ -71,12 +82,20 @@ contract FlightInsurance is ReentrancyGuard {
         _;
     }
 
+    modifier onlyInsuranceOwner(uint256 insuranceId) {
+        if (s_Insurances[insuranceId].user != msg.sender) {
+            revert FlightInsurance__Unauthorized();
+        }
+        _;
+    }
+
     /* Functions */
 
     /* constructor */
-    constructor(address fundsManagerAddress) {
-        _InsuranceCounter = 0;
+    constructor(address fundsManagerAddress, address insuranceManagerAddress) {
+        s_InsuranceCounter = 0;
         i_FundsManager = FundsManager(payable(fundsManagerAddress));
+        i_InsuranceManager = InsuranceManager(insuranceManagerAddress);
     }
     /* receive function (if exists) */
     /* fallback function (if exists) */
@@ -96,9 +115,9 @@ contract FlightInsurance is ReentrancyGuard {
         string memory _arrivalAirportName,
         string memory _arrivalDateAndTime
     ) public MoreThanZero(_premiumAmount) nonReentrant {
-        uint256 _InsuranceId = _InsuranceCounter++;
+        uint256 _InsuranceId = s_InsuranceCounter++;
 
-        s_Insurances[_InsuranceCounter] = Insurance({
+        s_Insurances[s_InsuranceCounter] = Insurance({
             insuranceId: _InsuranceId,
             user: _user,
             premiumAmount: _premiumAmount,
@@ -110,28 +129,78 @@ contract FlightInsurance is ReentrancyGuard {
                 arrivalAirport: Airport({code: _arrivalAirportCode, name: _arrivalAirportName}),
                 arrivalDateAndTime: _arrivalDateAndTime
             }),
-            insuranceStatus: InsuranceStatus.Active
+            insuranceStatus: InsuranceStatus.Active,
+            createdAt: block.timestamp
         });
 
-        (bool success,) = address(i_FundsManager).call{value: s_Insurances[_InsuranceCounter].premiumAmount}("");
-        if (!success) {
-            revert FlightInsurance__TransferFailed();
-        }
+        s_UserInsurances[_user].push(_InsuranceId);
 
-        emit InsuranceCreated(_user, s_Insurances[_InsuranceCounter]);
+        i_FundsManager.depositPremium{value: _premiumAmount}(_user);
+
+        emit InsuranceCreated(_user, s_Insurances[s_InsuranceCounter]);
     }
 
-    function updateInsuranceStatus(uint256 insuranceId, InsuranceStatus status) public InsuranceExists(insuranceId) {
+    function initiateClaimRequest(uint256 insuranceId)
+        public
+        InsuranceExists(insuranceId)
+        onlyInsuranceOwner(insuranceId)
+    {
+        if (s_Insurances[insuranceId].insuranceStatus != InsuranceStatus.Active) {
+            revert FlightInsurance__InvalidStatus();
+        }
+
+        if (block.timestamp > s_Insurances[insuranceId].createdAt + INSURANCE_VALIDITY_PERIOD) {
+            s_Insurances[insuranceId].insuranceStatus = InsuranceStatus.Expired;
+            emit InsuranceStatusUpdated(insuranceId, InsuranceStatus.Expired);
+            revert FlightInsurance__InvalidStatus();
+        }
+
+        string[] memory args = new string[](5);
+        args[0] = s_Insurances[insuranceId].ticket.flightNumber;
+        args[1] = s_Insurances[insuranceId].ticket.departureAirport.name;
+        args[2] = s_Insurances[insuranceId].ticket.departureDateAndTime;
+        args[3] = s_Insurances[insuranceId].ticket.arrivalAirport.name;
+        args[4] = s_Insurances[insuranceId].ticket.arrivalDateAndTime;
+
+        i_InsuranceManager.sendClaimRequest(msg.sender, s_Insurances[insuranceId].premiumAmount, args);
+
+        s_Insurances[s_InsuranceCounter].insuranceStatus = InsuranceStatus.Claimed;
+
+        emit InsuranceClaimed(insuranceId, s_Insurances[insuranceId].user);
+    }
+
+    function _UpdateInsuranceStatus(uint256 insuranceId, InsuranceStatus status)
+        internal
+        InsuranceExists(insuranceId)
+    {
         s_Insurances[insuranceId].insuranceStatus = status;
         emit InsuranceStatusUpdated(insuranceId, status);
     }
 
-    function cancelInsurance(uint256 insuranceId) public InsuranceExists(insuranceId) {
+    function cancelInsurance(uint256 insuranceId) public InsuranceExists(insuranceId) onlyInsuranceOwner(insuranceId) {
+        if (s_Insurances[insuranceId].insuranceStatus != InsuranceStatus.Active) {
+            revert FlightInsurance__InvalidStatus();
+        }
+
         s_Insurances[insuranceId].insuranceStatus = InsuranceStatus.Cancelled;
+        i_FundsManager.payClaim(msg.sender, s_Insurances[insuranceId].premiumAmount / 2); // 50% refund on cancellation
+
         emit InsuranceStatusUpdated(insuranceId, InsuranceStatus.Cancelled);
     }
+
     /* internal */
     /* private */
     /* internal & private view & pure functions */
     /* external & public view & pure functions */
+    function getInsurance(uint256 insuranceId) external view returns (Insurance memory) {
+        return s_Insurances[insuranceId];
+    }
+
+    function getUserInsurances(address user) external view returns (uint256[] memory) {
+        return s_UserInsurances[user];
+    }
+
+    function getInsuranceCounter() external view returns (uint256) {
+        return s_InsuranceCounter;
+    }
 }
