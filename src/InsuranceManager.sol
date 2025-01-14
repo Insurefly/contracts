@@ -118,7 +118,6 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
     /* external */
     function sendClaimRequest(address user, uint256 premiumAmount, string[] calldata args)
         external
-        onlyOwner
         amountMustBeGreatThanZero(premiumAmount)
         returns (bytes32 requestId)
     {
@@ -143,7 +142,6 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
 
     function sendCalculateClaimRequest(address user, uint256 premiumAmount, uint256 delay)
         public
-        onlyOwner
         amountMustBeGreatThanZero(premiumAmount)
         returns (bytes32 requestId)
     {
@@ -156,7 +154,7 @@ contract InsuranceManager is ConfirmedOwner, FunctionsClient {
         if (args.length > 0) req.setArgs(args); // Set the arguments for the request
 
         requestId = _sendRequest(req.encodeCBOR(), i_subscriptionId, i_gasLimit, i_donID);
-        // s_requestIdToRequest[requestId] = ClaimRequest(user, premiumAmount, ClaimType.CalculateClaim);
+
         s_requestIdToRequest[requestId] = ClaimRequest({
             user: user,
             premiumAmount: premiumAmount,
